@@ -1,0 +1,42 @@
+// Prisma schema for The Review Dash.
+// One table: Review. Dedup is enforced at the DB level via a unique
+// (source, externalId) constraint so re-ingesting the same review is a no-op.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Review {
+  id String @id @default(cuid())
+
+  // Where the review came from, e.g. "amazon" or "mock".
+  source String
+
+  // Stable identifier from the upstream source. When the source doesn't provide
+  // one, the ingestion layer derives a deterministic content hash instead, so
+  // the same review always maps to the same externalId (idempotent ingest).
+  externalId String
+
+  productName String
+  rating      Int // 1..5
+  title       String?
+  body        String  @db.Text
+  author      String?
+
+  // When the review was written upstream. Used for "newest first" ordering.
+  reviewedAt DateTime
+
+  // Bookkeeping.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([source, externalId])
+  @@index([reviewedAt])
+  @@index([rating])
+  @@map("reviews")
+}

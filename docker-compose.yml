@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: reviewdash-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: reviewdash
+    ports:
+      # Host port is overridable (DB_PORT) in case 5432 is already taken.
+      # Defaults to the conventional 5432. If you change it, update DATABASE_URL
+      # in your .env to match.
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - reviewdash-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reviewdash"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  reviewdash-pgdata:
