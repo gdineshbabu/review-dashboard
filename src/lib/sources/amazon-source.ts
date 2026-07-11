@@ -1,4 +1,4 @@
-import type { RawReview, ReviewSource } from "./types";
+import type { FetchOptions, RawReview, ReviewSource } from "./types";
 
 /**
  * Real Amazon review source.
@@ -16,12 +16,12 @@ import type { RawReview, ReviewSource } from "./types";
  * requiring a paid key to run the app.
  */
 
-// ASINs derived from the product short-links in TASK.md. Kept here so the real
-// integration would have concrete targets to fetch.
+// ASINs resolved from the product short-links in TASK.md (amzn.in/d/...). Kept
+// here so the real integration has concrete targets to fetch.
 const PRODUCT_ASINS = [
-  "B07QQF5410", // KardiaMobile 1-Lead (example ASIN)
-  "B08L4QwXYZ", // KardiaMobile 6L (example ASIN)
-  "B09XXKARDC", // KardiaMobile Card (example ASIN)
+  "B01A4W8AUK", // KardiaMobile 1-Lead ECG Monitor        (amzn.in/d/01qnlA6F)
+  "B07RQW6SD5", // KardiaMobile 6L ECG Monitor            (amzn.in/d/07vKnqI2)
+  "B09TQ3ZN8V", // KardiaMobile Card credit-card-sized ECG (amzn.in/d/03eooMZA)
 ];
 
 interface AmazonSourceOptions {
@@ -44,18 +44,22 @@ export class AmazonReviewSource implements ReviewSource {
     return this.apiKey.length > 0;
   }
 
-  async fetchReviews(): Promise<RawReview[]> {
+  async fetchReviews(options?: FetchOptions): Promise<RawReview[]> {
     if (!this.isEnabled()) {
       throw new Error(
         "AmazonReviewSource is disabled: set AMAZON_API_KEY to enable it.",
       );
     }
 
+    // Scope to a single ASIN when asked (add-product flow); otherwise refresh
+    // every catalog product.
+    const asins = options?.asin ? [options.asin] : PRODUCT_ASINS;
+
     // Reference implementation for a real provider. Left unreachable in the
     // default setup because no key is committed. Shown to make the integration
     // seam concrete rather than hand-wavy.
     const all: RawReview[] = [];
-    for (const asin of PRODUCT_ASINS) {
+    for (const asin of asins) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
       try {
@@ -86,6 +90,9 @@ export class AmazonReviewSource implements ReviewSource {
             title: (r.title as string) ?? null,
             body: (r.body as string) ?? null,
             author: (r.profile as { name?: string })?.name ?? null,
+            // Rainforest returns e.g. "Reviewed in India on 3 July 2026" here;
+            // normalize.parseCountry pulls the country name out of it.
+            country: (r.date as { raw?: string })?.raw ?? null,
             date: (r.date as { raw?: string })?.raw ?? null,
           });
         }

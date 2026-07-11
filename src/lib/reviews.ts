@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 
 /** Shape the dashboard/API consumers receive (dates as ISO strings). */
@@ -9,6 +10,7 @@ export interface ReviewDTO {
   title: string | null;
   body: string;
   author: string | null;
+  country: string | null;
   reviewedAt: string;
 }
 
@@ -16,6 +18,10 @@ export interface ListReviewsParams {
   limit?: number;
   rating?: number;
   source?: string;
+  product?: string;
+  country?: string;
+  /** Free-text search across author name, title, body and product name. */
+  search?: string;
 }
 
 const MAX_LIMIT = 100;
@@ -32,12 +38,30 @@ export async function listReviews(
 ): Promise<ReviewDTO[]> {
   const limit = Math.min(Math.max(params.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
 
-  const where: { rating?: number; source?: string } = {};
+  const where: Prisma.ReviewWhereInput = {};
   if (params.rating && params.rating >= 1 && params.rating <= 5) {
     where.rating = params.rating;
   }
   if (params.source) {
     where.source = params.source;
+  }
+  if (params.product) {
+    where.productName = params.product;
+  }
+  if (params.country) {
+    where.country = params.country;
+  }
+
+  // Free-text search: case-insensitive match on author (name), title, body, or
+  // product. Combined with the filters above as AND (all must hold).
+  const search = params.search?.trim();
+  if (search) {
+    where.OR = [
+      { author: { contains: search, mode: "insensitive" } },
+      { title: { contains: search, mode: "insensitive" } },
+      { body: { contains: search, mode: "insensitive" } },
+      { productName: { contains: search, mode: "insensitive" } },
+    ];
   }
 
   const rows = await prisma.review.findMany({
@@ -54,6 +78,7 @@ export async function listReviews(
     title: r.title,
     body: r.body,
     author: r.author,
+    country: r.country,
     reviewedAt: r.reviewedAt.toISOString(),
   }));
 }
@@ -66,6 +91,39 @@ export async function listSources(): Promise<string[]> {
     orderBy: { source: "asc" },
   });
   return rows.map((r) => r.source);
+}
+
+/** Distinct non-null countries present in the DB — powers the country filter. */
+export async function listCountries(): Promise<string[]> {
+  const rows = await prisma.review.findMany({
+    where: { country: { not: null } },
+    distinct: ["country"],
+    select: { country: true },
+    orderBy: { country: "asc" },
+  });
+  return rows.map((r) => r.country!).filter(Boolean);
+}
+
+export interface ProductSummary {
+  productName: string;
+  count: number;
+}
+
+/**
+ * Distinct products present in the DB with a review count each — powers the
+ * product filter and the "which products do we have" view. Counted in the DB via
+ * groupBy so we don't pull rows just to tally them.
+ */
+export async function listProducts(): Promise<ProductSummary[]> {
+  const grouped = await prisma.review.groupBy({
+    by: ["productName"],
+    _count: { _all: true },
+    orderBy: { productName: "asc" },
+  });
+  return grouped.map((g) => ({
+    productName: g.productName,
+    count: g._count._all,
+  }));
 }
 
 export interface ReviewStats {

@@ -1,5 +1,5 @@
-import type { RawReview, ReviewSource } from "./types";
-import { FIXTURE_REVIEWS } from "./fixtures";
+import type { FetchOptions, RawReview, ReviewSource } from "./types";
+import { fixtureReviewsForAsin, fullDataset } from "./catalog";
 
 /** Deterministic-ish 0..1 value derived from an integer seed. */
 function seeded(seed: number): number {
@@ -50,7 +50,7 @@ export class MockReviewSource implements ReviewSource {
     return true;
   }
 
-  async fetchReviews(): Promise<RawReview[]> {
+  async fetchReviews(options?: FetchOptions): Promise<RawReview[]> {
     // Mix wall-clock time with the attempt counter so outcomes genuinely vary
     // across attempts and across requests. When both rates are 0 the seed is
     // irrelevant and the source always succeeds.
@@ -74,7 +74,11 @@ export class MockReviewSource implements ReviewSource {
       throw new Error("mock upstream: transient fetch failure (503)");
     }
 
-    // Return a shallow copy so callers can't mutate the fixtures.
-    return FIXTURE_REVIEWS.map((r) => ({ ...r }));
+    // Scoped fetch: return only the requested product's reviews (empty if we
+    // have none for that ASIN). Otherwise return the full multi-product dataset.
+    if (options?.asin) {
+      return fixtureReviewsForAsin(options.asin);
+    }
+    return fullDataset();
   }
 }

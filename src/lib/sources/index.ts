@@ -2,9 +2,14 @@ import type { ReviewSource } from "./types";
 import { MockReviewSource } from "./mock-source";
 import { AmazonReviewSource } from "./amazon-source";
 
-export type { ReviewSource, RawReview } from "./types";
+export type { ReviewSource, RawReview, FetchOptions } from "./types";
 export { MockReviewSource } from "./mock-source";
 export { AmazonReviewSource } from "./amazon-source";
+export {
+  PRODUCT_CATALOG,
+  productForAsin,
+  type KnownProduct,
+} from "./catalog";
 
 /**
  * Resolve which source to ingest from based on the REVIEW_SOURCE env var.

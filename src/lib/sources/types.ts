@@ -19,6 +19,9 @@ export interface RawReview {
   text?: string | null;
   content?: string | null;
   author?: string | null;
+  /** Reviewer country. May be a clean name, an Amazon "Reviewed in X" blob, or missing. */
+  country?: string | null;
+  location?: string | null;
   /** Date may be an ISO string, a human string, a timestamp, or missing. */
   date?: string | number | null;
   reviewedAt?: string | number | null;
@@ -28,6 +31,12 @@ export interface RawReview {
 export interface FetchResult {
   source: string;
   reviews: RawReview[];
+}
+
+/** Options that scope a single fetch. */
+export interface FetchOptions {
+  /** Fetch only this product's reviews. Omit to fetch everything the source has. */
+  asin?: string;
 }
 
 /**
@@ -40,6 +49,9 @@ export interface ReviewSource {
   readonly name: string;
   /** Whether this source is usable in the current environment (keys present, etc.). */
   isEnabled(): boolean;
-  /** Fetch raw reviews. May throw or be slow — callers must handle both. */
-  fetchReviews(): Promise<RawReview[]>;
+  /**
+   * Fetch raw reviews. May throw or be slow — callers must handle both. Pass an
+   * `asin` to scope the fetch to a single product; omit it to fetch everything.
+   */
+  fetchReviews(options?: FetchOptions): Promise<RawReview[]>;
 }

@@ -43,6 +43,7 @@ export function ReviewCard({ review }: { review: ReviewDTO }) {
           <p>
             {review.author ?? "Anonymous"} &middot;{" "}
             {formatDate(review.reviewedAt)}
+            {review.country ? ` · ${review.country}` : ""}
           </p>
         </div>
       </CardContent>

@@ -9,9 +9,12 @@ import {
   Activity,
 } from "lucide-react";
 import { fetchReviews, fetchStats } from "@/lib/api-client";
+import { PRODUCT_CATALOG } from "@/lib/sources";
 import { ReviewCard } from "@/components/review-card";
 import { ReviewFilters } from "@/components/review-filters";
+import { SearchBox } from "@/components/search-box";
 import { RefreshButton } from "@/components/refresh-button";
+import { AddProductForm } from "@/components/add-product-form";
 import { StatCard } from "@/components/stat-card";
 import { RatingDistribution } from "@/components/rating-distribution";
 
@@ -32,15 +35,27 @@ function formatUpdated(iso: string | null): string {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ rating?: string; source?: string }>;
+  searchParams: Promise<{
+    rating?: string;
+    source?: string;
+    product?: string;
+    country?: string;
+    q?: string;
+  }>;
 }) {
   const params = await searchParams;
   const [result, stats] = await Promise.all([
     fetchReviews(params),
     fetchStats(),
   ]);
-  const isFiltered = Boolean(params.rating || params.source);
+  const isFiltered = Boolean(
+    params.rating || params.source || params.product || params.country || params.q,
+  );
   const hasData = Boolean(stats && stats.total > 0);
+  const knownProducts = PRODUCT_CATALOG.map((p) => ({
+    label: p.label,
+    shortLink: p.shortLink,
+  }));
 
   return (
     <div className="min-h-screen bg-[var(--color-muted)]/40">
@@ -65,6 +80,9 @@ export default async function DashboardPage({
       </header>
 
       <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8 sm:px-6">
+        {/* Add a product by link */}
+        <AddProductForm knownProducts={knownProducts} />
+
         {/* Summary */}
         {hasData && stats && (
           <section className="space-y-4">
@@ -107,7 +125,14 @@ export default async function DashboardPage({
               </p>
             </div>
             <Suspense fallback={<div className="h-9" />}>
-              <ReviewFilters sources={result.ok ? result.data.sources : []} />
+              <div className="flex w-full flex-col gap-3 sm:w-auto lg:flex-row lg:items-center">
+                <SearchBox />
+                <ReviewFilters
+                  sources={result.ok ? result.data.sources : []}
+                  products={result.ok ? result.data.products : []}
+                  countries={result.ok ? result.data.countries : []}
+                />
+              </div>
             </Suspense>
           </div>
 

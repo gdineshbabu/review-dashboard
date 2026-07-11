@@ -52,7 +52,9 @@ npm run dev
 
 Open **http://localhost:3000** — you'll see the latest 20 reviews, newest first,
 with summary stats and a rating breakdown. Use **Refresh reviews** to run ingestion
-again (deduplicated), or the filters to narrow by rating/source.
+again (deduplicated), **Add a product** to pull a specific product's reviews from an
+Amazon link, the **search box** to search by author name or keyword, or the
+**filters** to narrow by product, rating, source, or country.
 
 > **Port 5432 already in use?** Start the DB on another port and point your `.env` at it:
 > ```bash
@@ -70,6 +72,7 @@ See `.env.example`. Nothing is required beyond `DATABASE_URL` for the default se
 | ------------------- | ------------------------------ | -------------------------------------------------------------- |
 | `DATABASE_URL`      | `postgresql://…5432/reviewdash`| Postgres connection string (matches `docker-compose.yml`).     |
 | `REVIEW_SOURCE`     | `mock`                         | Which upstream to ingest from: `mock` or `amazon`.             |
+| `REVIEWS_PER_PRODUCT`| `1000`                        | Reviews made available per product (curated + synthetic top-up). |
 | `AMAZON_API_KEY`    | _(empty)_                      | Key for a real Amazon scraping provider. Empty ⇒ falls back to mock. |
 | `NEXT_PUBLIC_APP_URL`| `http://localhost:3000`       | Base URL the dashboard uses to call our own API.               |
 
@@ -82,22 +85,44 @@ from a clean clone with zero credentials. A documented `AmazonReviewSource`
 (`src/lib/sources/amazon-source.ts`) shows the real integration seam; it activates
 only when `AMAZON_API_KEY` is set and otherwise falls back to mock.
 
+**Data volume:** to populate the dashboard at realistic scale without scraping (which
+violates Amazon's ToS) or a paid API, the mock source combines the curated hand-written
+reviews with a **deterministic synthetic generator** (`src/lib/sources/review-generator.ts`),
+yielding `REVIEWS_PER_PRODUCT` reviews per product — **1000 by default (~3000 total)**.
+This is clearly-labelled generated data, not real Amazon content; the curated reviews
+stay the newest rows on the dashboard.
+
+---
+
+## Deployment
+
+Deployable to Render (app + Postgres) via the included [`render.yaml`](./render.yaml)
+Blueprint. See **[DEPLOY.md](./DEPLOY.md)** for one-click and manual steps. The same
+setup works on Railway or Vercel + Neon.
+
 ---
 
 ## REST API
 
 | Method & path                | Description                                                        |
 | ---------------------------- | ----------------------------------------------------------------- |
-| `GET /api/reviews`           | Latest reviews, newest first. Query: `limit` (1–100, default 20), `rating` (1–5), `source`. |
+| `GET /api/reviews`           | Latest reviews, newest first. Query: `limit` (1–100, default 20), `rating` (1–5), `source`, `product`, `country`, `q` (free-text search over author/title/body/product). Filters combine as AND. Also returns the full `sources`/`products`/`countries` lists for the filter menus. |
 | `GET /api/stats`             | Aggregate metrics: total, average rating, rating distribution, positive share. |
 | `POST /api/reviews/refresh`  | Runs the ingestion pipeline (fetch → normalize → dedupe → store) and returns a summary. |
+| `GET /api/products`          | Distinct products in the DB with a review count each. |
+| `POST /api/products`         | Add a product by link. Body `{ "url": "..." }` — an Amazon product URL or `amzn.in` share link; resolves it to an ASIN and ingests that product's reviews (deduped). |
 
 ```bash
 # Examples
 curl http://localhost:3000/api/reviews
 curl "http://localhost:3000/api/reviews?rating=5"
+curl "http://localhost:3000/api/reviews?country=India&q=afib"
 curl http://localhost:3000/api/stats
 curl -X POST http://localhost:3000/api/reviews/refresh
+curl http://localhost:3000/api/products
+curl -X POST http://localhost:3000/api/products \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://amzn.in/d/01qnlA6F"}'
 ```
 
 ---
@@ -129,20 +154,23 @@ src/
   app/
     page.tsx                 # dashboard (server component, reads via REST API)
     api/
-      reviews/route.ts       # GET latest reviews (+ filters)
+      reviews/route.ts       # GET latest reviews (+ filters/search)
       reviews/refresh/route.ts # POST trigger ingestion
       stats/route.ts         # GET aggregate stats
+      products/route.ts      # GET product list, POST add-product-by-link
   components/
     ui/                      # shadcn/ui components (button, card, badge, select)
-    review-card.tsx, review-filters.tsx, refresh-button.tsx,
-    stat-card.tsx, rating-distribution.tsx, star-rating.tsx
+    review-card.tsx, review-filters.tsx, search-box.tsx, refresh-button.tsx,
+    add-product-form.tsx, stat-card.tsx, rating-distribution.tsx, star-rating.tsx
   lib/
     db.ts                    # Prisma client singleton
     ingest.ts                # fetch → normalize → dedupe → store (retry/backoff)
     normalize.ts             # taming inconsistent upstream data
     reviews.ts               # read/query + aggregate stats
     api-client.ts            # server-side fetch of our own API
-    sources/                 # ReviewSource abstraction: mock, amazon, registry
+    amazon-url.ts            # resolve an Amazon/amzn.in link to an ASIN
+    sources/                 # ReviewSource abstraction: mock, amazon, catalog,
+                             #   review-generator (synthetic data), registry
 prisma/schema.prisma         # Review model + unique constraint
 scripts/seed.ts              # deterministic DB seed
 docker-compose.yml           # Postgres 16

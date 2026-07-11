@@ -28,6 +28,9 @@ model Review {
   body        String  @db.Text
   author      String?
 
+  // Reviewer country, when the source provides it (often missing/messy upstream).
+  country String?
+
   // When the review was written upstream. Used for "newest first" ordering.
   reviewedAt DateTime
 

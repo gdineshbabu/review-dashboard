@@ -10,6 +10,7 @@ export interface NormalizedReview {
   title: string | null;
   body: string;
   author: string | null;
+  country: string | null;
   reviewedAt: Date;
 }
 
@@ -27,6 +28,21 @@ function parseBody(raw: RawReview): string | null {
   const candidate = raw.body ?? raw.text ?? raw.content;
   const trimmed = candidate?.trim();
   return trimmed ? trimmed : null;
+}
+
+/**
+ * Coerce a possibly-messy country value into a clean name, or null.
+ * Handles Amazon-style "Reviewed in the United States on 3 July 2026" blobs by
+ * pulling out the country between "Reviewed in" and "on".
+ */
+function parseCountry(raw: RawReview): string | null {
+  const value = raw.country ?? raw.location;
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  const match = /reviewed in\s+(.+?)(?:\s+on\b.*)?$/i.exec(trimmed);
+  const name = (match ? match[1] : trimmed).replace(/^the\s+/i, "").trim();
+  return name || null;
 }
 
 /** Parse the many date shapes an upstream might send. Returns null if unusable. */
@@ -90,6 +106,7 @@ export function normalizeReview(
   // Treat placeholder authors as anonymous.
   const cleanAuthor =
     author && author.toLowerCase() !== "anonymous" ? author : null;
+  const country = parseCountry(raw);
 
   const externalId =
     raw.externalId?.trim() ||
@@ -103,6 +120,7 @@ export function normalizeReview(
     title,
     body,
     author: cleanAuthor,
+    country,
     reviewedAt,
   };
 }

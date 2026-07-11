@@ -1,6 +1,10 @@
 import { prisma } from "./db";
 import { normalizeBatch } from "./normalize";
-import { resolveReviewSource, type ReviewSource } from "./sources";
+import {
+  resolveReviewSource,
+  type FetchOptions,
+  type ReviewSource,
+} from "./sources";
 
 export interface IngestResult {
   source: string;
@@ -24,13 +28,14 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 async function fetchWithRetry(
   source: ReviewSource,
+  options: FetchOptions,
   maxAttempts = 4,
 ): Promise<{ reviews: Awaited<ReturnType<ReviewSource["fetchReviews"]>>; attempts: number }> {
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const reviews = await source.fetchReviews();
+      const reviews = await source.fetchReviews(options);
       return { reviews, attempts: attempt };
     } catch (err) {
       lastError = err;
@@ -57,41 +62,34 @@ async function fetchWithRetry(
 /**
  * The ingestion pipeline: fetch -> normalize -> dedupe -> store.
  *
- * Dedup is handled at the database level via the unique (source, externalId)
- * constraint. We use a per-row upsert inside a transaction: rows we already have
- * are counted as duplicates and left untouched, new rows are inserted. This is
- * what satisfies "don't re-fetch what you already have".
+ * Dedup is enforced at the database level via the unique (source, externalId)
+ * constraint. We de-duplicate the batch against itself first, then insert with
+ * `createMany({ skipDuplicates })` — a single round-trip that scales to thousands
+ * of rows and is concurrency-safe (ON CONFLICT DO NOTHING handles races between
+ * simultaneous refreshes). `inserted` is exactly what the DB accepted; the rest
+ * were already present. This is what satisfies "don't re-fetch what you already have".
  */
 export async function ingestReviews(
   source: ReviewSource = resolveReviewSource(),
+  options: FetchOptions = {},
 ): Promise<IngestResult> {
-  const { reviews, attempts } = await fetchWithRetry(source);
+  const { reviews, attempts } = await fetchWithRetry(source, options);
   const { valid, dropped } = normalizeBatch(source.name, reviews);
 
-  let inserted = 0;
-  let duplicates = 0;
-
-  // Upsert each review. Doing these individually (rather than createMany with
-  // skipDuplicates) lets us accurately report inserted-vs-duplicate counts,
-  // which is useful signal for an internal tool.
-  await prisma.$transaction(async (tx) => {
-    for (const r of valid) {
-      const existing = await tx.review.findUnique({
-        where: {
-          source_externalId: { source: r.source, externalId: r.externalId },
-        },
-        select: { id: true },
-      });
-
-      if (existing) {
-        duplicates++;
-        continue;
-      }
-
-      await tx.review.create({ data: r });
-      inserted++;
-    }
+  // Collapse duplicate externalIds within this batch so counts stay accurate.
+  const seen = new Set<string>();
+  const unique = valid.filter((r) => {
+    if (seen.has(r.externalId)) return false;
+    seen.add(r.externalId);
+    return true;
   });
+
+  const created = await prisma.review.createMany({
+    data: unique,
+    skipDuplicates: true,
+  });
+  const inserted = created.count;
+  const duplicates = valid.length - inserted;
 
   const result: IngestResult = {
     source: source.name,

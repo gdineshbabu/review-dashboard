@@ -1,14 +1,27 @@
-import type { ReviewDTO, ReviewStats } from "./reviews";
+import type { ProductSummary, ReviewDTO, ReviewStats } from "./reviews";
 
 export interface ReviewsResponse {
   count: number;
   reviews: ReviewDTO[];
   sources: string[];
+  products: ProductSummary[];
+  countries: string[];
 }
 
-/** Absolute base URL for server-side fetches to our own API. */
+/**
+ * Absolute base URL for server-side fetches to our own API.
+ *
+ * Resolution order lets the app work locally and on common hosts without any
+ * manual config: explicit override first, then the platform-provided URL
+ * (Render / Vercel), then localhost for dev.
+ */
 function baseUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  // Render exposes the full external URL (e.g. https://review-dash.onrender.com).
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
+  // Vercel exposes only the host, so prefix the scheme.
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
 }
 
 /**
@@ -22,10 +35,16 @@ function baseUrl(): string {
 export async function fetchReviews(searchParams: {
   rating?: string;
   source?: string;
+  product?: string;
+  country?: string;
+  q?: string;
 }): Promise<{ ok: true; data: ReviewsResponse } | { ok: false; error: string }> {
   const params = new URLSearchParams({ limit: "20" });
   if (searchParams.rating) params.set("rating", searchParams.rating);
   if (searchParams.source) params.set("source", searchParams.source);
+  if (searchParams.product) params.set("product", searchParams.product);
+  if (searchParams.country) params.set("country", searchParams.country);
+  if (searchParams.q) params.set("q", searchParams.q);
 
   try {
     const res = await fetch(`${baseUrl()}/api/reviews?${params.toString()}`, {
