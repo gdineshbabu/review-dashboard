@@ -1,0 +1,42 @@
+# Render Blueprint — one-click deploy of the app + PostgreSQL.
+# In the Render dashboard: New → Blueprint → point at this repo. Render reads this
+# file and provisions both services, wiring DATABASE_URL automatically.
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: reviewdash-db
+    databaseName: reviewdash
+    user: reviewdash
+    plan: free # 1GB; note: free Postgres is removed 90 days after creation.
+
+services:
+  - type: web
+    name: review-dash
+    runtime: node
+    plan: free
+    # NODE_ENV=production on Render would skip devDeps (prisma CLI, tsx, typescript),
+    # so we install them explicitly. Then: generate client → apply migrations →
+    # seed (idempotent) → build. Remove `npm run seed` after the first deploy if
+    # you don't want it to run every time.
+    buildCommand: >-
+      npm install --include=dev &&
+      npm run db:generate &&
+      npm run db:deploy &&
+      npm run seed &&
+      npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/stats
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reviewdash-db
+          property: connectionString
+      - key: REVIEW_SOURCE
+        value: mock
+      - key: REVIEWS_PER_PRODUCT
+        value: "1000"
+      - key: NODE_VERSION
+        value: "20"
+      # RENDER_EXTERNAL_URL is injected automatically and used by the app to call
+      # its own REST API, so NEXT_PUBLIC_APP_URL is not required here.
