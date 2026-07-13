@@ -7,10 +7,10 @@
  *
  * Run with: npm run seed
  */
-import { ingestReviews } from "../src/lib/ingest";
-import { MockReviewSource } from "../src/lib/sources";
+import { ingestReviews } from "../src/backend/ingest";
+import { MockReviewSource } from "../src/backend/sources";
 
-async function main() {
+const main = async () => {
   const source = new MockReviewSource({
     failureRate: 0,
     rateLimitRate: 0,
@@ -23,7 +23,7 @@ async function main() {
     `Seed complete: inserted ${result.inserted}, ` +
       `skipped ${result.duplicates} existing, dropped ${result.dropped} unusable.`,
   );
-}
+};
 
 main()
   .catch((err) => {

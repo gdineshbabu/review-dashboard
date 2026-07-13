@@ -6,14 +6,16 @@ export const metadata: Metadata = {
   description: "Internal dashboard for recent AliveCor product reviews.",
 };
 
-export default function RootLayout({
+const RootLayout = ({
   children,
 }: {
   children: React.ReactNode;
-}) {
+}) => {
   return (
     <html lang="en">
       <body className="antialiased">{children}</body>
     </html>
   );
-}
+};
+
+export default RootLayout;

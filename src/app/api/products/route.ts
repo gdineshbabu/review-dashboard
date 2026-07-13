@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { ingestReviews } from "@/lib/ingest";
-import { listProducts } from "@/lib/reviews";
-import { resolveAmazonUrl } from "@/lib/amazon-url";
-import { productForAsin } from "@/lib/sources";
-import { HTTP_STATUS } from "@/lib/constants";
+import { ingestReviews } from "@/backend/ingest";
+import { listProducts } from "@/backend/reviews";
+import { resolveAmazonUrl } from "@/backend/amazon-url";
+import { productForAsin } from "@/backend/sources";
+import { HTTP_STATUS } from "@/backend/constants";
 
 export const dynamic = "force-dynamic";
 // Resolving a short-link + ingesting with retries can take a few seconds.
@@ -15,7 +15,7 @@ export const maxDuration = 30;
  * Distinct products in the DB with a review count each. Powers the product
  * filter and gives an at-a-glance "what have we ingested" view.
  */
-export async function GET() {
+export const GET = async () => {
   try {
     const products = await listProducts();
     return NextResponse.json({ products });
@@ -26,7 +26,7 @@ export async function GET() {
       { status: HTTP_STATUS.INTERNAL_SERVER_ERROR },
     );
   }
-}
+};
 
 /**
  * POST /api/products
@@ -37,7 +37,7 @@ export async function GET() {
  * (deduped like any other ingest). This is the "add items using the links" flow:
  * the link is the input, the stored+deduped reviews are the output.
  */
-export async function POST(request: Request) {
+export const POST = async (request: Request) => {
   let url: unknown;
   try {
     ({ url } = await request.json());
@@ -106,4 +106,4 @@ export async function POST(request: Request) {
       { status: HTTP_STATUS.BAD_GATEWAY },
     );
   }
-}
+};
