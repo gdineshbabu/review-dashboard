@@ -1,0 +1,8 @@
+# Railway/Nixpacks: prefer npm install over npm ci (lockfile platform
+# optional-deps often diverge between Windows and Linux), and keep
+# devDependencies so `prisma generate` / Next build can run.
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+
+[phases.install]
+cmds = ["npm install --include=dev"]
