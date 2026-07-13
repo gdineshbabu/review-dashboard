@@ -9,6 +9,7 @@ import {
 } from "@/frontend/components/ui/select";
 import { useUrlFilters } from "@/hooks";
 import { ALL } from "@/utils/constants";
+import { RATING_VALUES } from "@/backend/constants";
 import { FILTERS } from "@/utils/labels";
 import type { ProductSummary } from "@/models";
 
@@ -60,7 +61,7 @@ export const ReviewFilters = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>{FILTERS.allRatings}</SelectItem>
-            {[5, 4, 3, 2, 1].map((n) => (
+            {RATING_VALUES.map((n) => (
               <SelectItem key={n} value={String(n)}>
                 {FILTERS.star(n)}
               </SelectItem>
