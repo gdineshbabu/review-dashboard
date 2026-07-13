@@ -17,6 +17,10 @@ const baseUrl = (): string => {
   if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
   // Vercel exposes only the host, so prefix the scheme.
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  // Railway exposes the public hostname (no scheme).
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  }
   return "http://localhost:3000";
 };
 
