@@ -3,6 +3,7 @@ import { ingestReviews } from "@/lib/ingest";
 import { listProducts } from "@/lib/reviews";
 import { resolveAmazonUrl } from "@/lib/amazon-url";
 import { productForAsin } from "@/lib/sources";
+import { HTTP_STATUS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 // Resolving a short-link + ingesting with retries can take a few seconds.
@@ -22,7 +23,7 @@ export async function GET() {
     console.error("[api/products] failed to list products:", err);
     return NextResponse.json(
       { error: "Failed to load products." },
-      { status: 500 },
+      { status: HTTP_STATUS.INTERNAL_SERVER_ERROR },
     );
   }
 }
@@ -43,14 +44,14 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { ok: false, error: "Expected a JSON body with a `url` field." },
-      { status: 400 },
+      { status: HTTP_STATUS.BAD_REQUEST },
     );
   }
 
   if (typeof url !== "string" || url.trim() === "") {
     return NextResponse.json(
       { ok: false, error: "Please provide a product `url`." },
-      { status: 400 },
+      { status: HTTP_STATUS.BAD_REQUEST },
     );
   }
 
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
         error:
           "Couldn't read an Amazon product from that link. Paste an amazon.in product URL or an amzn.in share link.",
       },
-      { status: 422 },
+      { status: HTTP_STATUS.UNPROCESSABLE_ENTITY },
     );
   }
 
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
             "The mock source ships fixtures for the three KardiaMobile products; " +
             "set AMAZON_API_KEY to pull arbitrary products live.",
         },
-        { status: 404 },
+        { status: HTTP_STATUS.NOT_FOUND },
       );
     }
 
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
         error:
           "Ingestion failed after retries. The upstream source may be down or rate-limited. Try again.",
       },
-      { status: 502 },
+      { status: HTTP_STATUS.BAD_GATEWAY },
     );
   }
 }

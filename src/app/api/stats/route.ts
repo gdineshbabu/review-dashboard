@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getReviewStats } from "@/lib/reviews";
+import { HTTP_STATUS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export async function GET() {
     console.error("[api/stats] failed to compute stats:", err);
     return NextResponse.json(
       { error: "Failed to load stats. Is the database running and migrated?" },
-      { status: 500 },
+      { status: HTTP_STATUS.INTERNAL_SERVER_ERROR },
     );
   }
 }

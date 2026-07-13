@@ -1,6 +1,7 @@
 import { FIXTURE_REVIEWS } from "./fixtures";
 import { generateProductReviews } from "./review-generator";
 import type { RawReview } from "./types";
+import { DEFAULT_REVIEWS_PER_PRODUCT } from "../constants";
 
 /**
  * The products we know how to ingest, keyed by Amazon ASIN.
@@ -52,7 +53,9 @@ export function productForAsin(asin: string): KnownProduct | undefined {
  */
 function reviewsPerProduct(): number {
   const raw = Number(process.env.REVIEWS_PER_PRODUCT);
-  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1000;
+  return Number.isFinite(raw) && raw > 0
+    ? Math.floor(raw)
+    : DEFAULT_REVIEWS_PER_PRODUCT;
 }
 
 // Deterministic seeds per product so each product's synthetic stream is stable.

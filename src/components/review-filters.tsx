@@ -8,8 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const ALL = "all";
+import { ALL_FILTER, RATING_VALUES, MIN_RATING } from "@/lib/constants";
 
 export interface ProductOption {
   productName: string;
@@ -33,14 +32,14 @@ export function ReviewFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const currentRating = searchParams.get("rating") ?? ALL;
-  const currentSource = searchParams.get("source") ?? ALL;
-  const currentProduct = searchParams.get("product") ?? ALL;
-  const currentCountry = searchParams.get("country") ?? ALL;
+  const currentRating = searchParams.get("rating") ?? ALL_FILTER;
+  const currentSource = searchParams.get("source") ?? ALL_FILTER;
+  const currentProduct = searchParams.get("product") ?? ALL_FILTER;
+  const currentCountry = searchParams.get("country") ?? ALL_FILTER;
 
   function setParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value === ALL) params.delete(key);
+    if (value === ALL_FILTER) params.delete(key);
     else params.set(key, value);
     const qs = params.toString();
     router.push(qs ? `/?${qs}` : "/");
@@ -61,7 +60,7 @@ export function ReviewFilters({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All products</SelectItem>
+              <SelectItem value={ALL_FILTER}>All products</SelectItem>
               {products.map((p) => (
                 <SelectItem key={p.productName} value={p.productName}>
                   {p.productName} ({p.count})
@@ -84,10 +83,10 @@ export function ReviewFilters({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>All ratings</SelectItem>
-            {[5, 4, 3, 2, 1].map((n) => (
+            <SelectItem value={ALL_FILTER}>All ratings</SelectItem>
+            {RATING_VALUES.map((n) => (
               <SelectItem key={n} value={String(n)}>
-                {n} star{n === 1 ? "" : "s"}
+                {n} star{n === MIN_RATING ? "" : "s"}
               </SelectItem>
             ))}
           </SelectContent>
@@ -107,7 +106,7 @@ export function ReviewFilters({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All countries</SelectItem>
+              <SelectItem value={ALL_FILTER}>All countries</SelectItem>
               {countries.map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
@@ -131,7 +130,7 @@ export function ReviewFilters({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All sources</SelectItem>
+              <SelectItem value={ALL_FILTER}>All sources</SelectItem>
               {sources.map((s) => (
                 <SelectItem key={s} value={s} className="capitalize">
                   {s}

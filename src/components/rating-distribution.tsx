@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ReviewStats } from "@/lib/reviews";
+import { RATING_VALUES } from "@/lib/constants";
 
 /**
  * Horizontal bar chart of how reviews break down by star rating (5 -> 1).
@@ -17,7 +18,7 @@ export function RatingDistribution({ stats }: { stats: ReviewStats }) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2.5">
-        {[5, 4, 3, 2, 1].map((star) => {
+        {RATING_VALUES.map((star) => {
           const count = stats.distribution[String(star)] ?? 0;
           const widthPct = (count / max) * 100;
           const share = stats.total > 0 ? (count / stats.total) * 100 : 0;

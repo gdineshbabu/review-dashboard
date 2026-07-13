@@ -1,5 +1,6 @@
 import type { FetchOptions, RawReview, ReviewSource } from "./types";
 import { fixtureReviewsForAsin, fullDataset } from "./catalog";
+import { RATE_LIMIT_STATUS } from "../constants";
 
 /** Deterministic-ish 0..1 value derived from an integer seed. */
 function seeded(seed: number): number {
@@ -65,7 +66,7 @@ export class MockReviewSource implements ReviewSource {
     // Simulate a rate-limit response (429-style) on some attempts.
     if (seeded(seed * 7) < this.rateLimitRate) {
       const err = new Error("mock upstream: rate limited (429)");
-      (err as { status?: number }).status = 429;
+      (err as { status?: number }).status = RATE_LIMIT_STATUS;
       throw err;
     }
 

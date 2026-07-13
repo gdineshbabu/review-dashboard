@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import type { RawReview } from "./sources/types";
+import { MIN_RATING, MAX_RATING, ANONYMOUS_AUTHOR } from "./constants";
 
 /** The strict, validated shape our database and API speak. */
 export interface NormalizedReview {
@@ -19,7 +20,7 @@ function parseRating(raw: RawReview["rating"]): number | null {
   if (raw === null || raw === undefined) return null;
   const n = typeof raw === "number" ? raw : parseInt(String(raw).trim(), 10);
   if (!Number.isFinite(n)) return null;
-  if (n < 1 || n > 5) return null;
+  if (n < MIN_RATING || n > MAX_RATING) return null;
   return Math.round(n);
 }
 
@@ -105,7 +106,7 @@ export function normalizeReview(
   const author = raw.author?.trim() || null;
   // Treat placeholder authors as anonymous.
   const cleanAuthor =
-    author && author.toLowerCase() !== "anonymous" ? author : null;
+    author && author.toLowerCase() !== ANONYMOUS_AUTHOR ? author : null;
   const country = parseCountry(raw);
 
   const externalId =
