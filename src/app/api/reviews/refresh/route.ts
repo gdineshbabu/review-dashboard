@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ingestReviews } from "@/backend/ingest";
+import { HTTP_STATUS } from "@/backend/constants";
 
 export const dynamic = "force-dynamic";
 // Ingestion involves retries/backoff, so give it more headroom than a page load.
@@ -26,7 +27,7 @@ export const POST = async () => {
         error:
           "Ingestion failed after retries. The upstream source may be down or rate-limited. Try again.",
       },
-      { status: 502 },
+      { status: HTTP_STATUS.BAD_GATEWAY },
     );
   }
 };

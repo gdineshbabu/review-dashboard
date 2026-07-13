@@ -1,6 +1,13 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
-import { DEFAULT_LIMIT, MAX_LIMIT } from "@/utils/constants";
+import {
+  DEFAULT_LIMIT,
+  MAX_LIMIT,
+  MIN_LIMIT,
+  MIN_RATING,
+  MAX_RATING,
+  POSITIVE_RATING_THRESHOLD,
+} from "./constants";
 import type {
   ListReviewsParams,
   ProductSummary,
@@ -18,10 +25,13 @@ import type {
 export const listReviews = async (
   params: ListReviewsParams = {},
 ): Promise<ReviewDTO[]> => {
-  const limit = Math.min(Math.max(params.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const limit = Math.min(
+    Math.max(params.limit ?? DEFAULT_LIMIT, MIN_LIMIT),
+    MAX_LIMIT,
+  );
 
   const where: Prisma.ReviewWhereInput = {};
-  if (params.rating && params.rating >= 1 && params.rating <= 5) {
+  if (params.rating && params.rating >= MIN_RATING && params.rating <= MAX_RATING) {
     where.rating = params.rating;
   }
   if (params.source) {
@@ -130,15 +140,16 @@ export const getReviewStats = async (): Promise<ReviewStats> => {
   };
   let total = 0;
   let weightedSum = 0;
+  let positive = 0;
   for (const g of grouped) {
     const count = g._count._all;
     distribution[String(g.rating)] = count;
     total += count;
     weightedSum += g.rating * count;
+    if (g.rating >= POSITIVE_RATING_THRESHOLD) positive += count;
   }
 
   const averageRating = total > 0 ? weightedSum / total : 0;
-  const positive = distribution["4"] + distribution["5"];
   const positiveShare = total > 0 ? (positive / total) * 100 : 0;
 
   return {

@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/frontend/components/ui/card";
 import { STATS } from "@/utils/labels";
+import { RATING_VALUES } from "@/backend/constants";
 import type { ReviewStats } from "@/models";
 
 /**
@@ -23,7 +24,7 @@ export const RatingDistribution = ({ stats }: { stats: ReviewStats }) => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2.5">
-        {[5, 4, 3, 2, 1].map((star) => {
+        {RATING_VALUES.map((star) => {
           const count = stats.distribution[String(star)] ?? 0;
           const widthPct = (count / max) * 100;
           const share = stats.total > 0 ? (count / stats.total) * 100 : 0;

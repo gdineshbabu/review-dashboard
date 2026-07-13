@@ -5,6 +5,7 @@ import {
   listReviews,
   listSources,
 } from "@/backend/reviews";
+import { MIN_LIMIT, MIN_RATING, MAX_RATING, HTTP_STATUS } from "@/backend/constants";
 
 // Reviews are read fresh from the DB on each request (no static caching).
 export const dynamic = "force-dynamic";
@@ -36,16 +37,19 @@ export const GET = async (request: Request) => {
   const limit = limitParam ? Number(limitParam) : undefined;
   const rating = ratingParam ? Number(ratingParam) : undefined;
 
-  if (limitParam && (!Number.isFinite(limit!) || limit! < 1)) {
+  if (limitParam && (!Number.isFinite(limit!) || limit! < MIN_LIMIT)) {
     return NextResponse.json(
       { error: "`limit` must be a positive number." },
-      { status: 400 },
+      { status: HTTP_STATUS.BAD_REQUEST },
     );
   }
-  if (ratingParam && (!Number.isInteger(rating!) || rating! < 1 || rating! > 5)) {
+  if (
+    ratingParam &&
+    (!Number.isInteger(rating!) || rating! < MIN_RATING || rating! > MAX_RATING)
+  ) {
     return NextResponse.json(
-      { error: "`rating` must be an integer between 1 and 5." },
-      { status: 400 },
+      { error: `\`rating\` must be an integer between ${MIN_RATING} and ${MAX_RATING}.` },
+      { status: HTTP_STATUS.BAD_REQUEST },
     );
   }
 
@@ -77,7 +81,7 @@ export const GET = async (request: Request) => {
     console.error("[api/reviews] failed to list reviews:", err);
     return NextResponse.json(
       { error: "Failed to load reviews. Is the database running and migrated?" },
-      { status: 500 },
+      { status: HTTP_STATUS.INTERNAL_SERVER_ERROR },
     );
   }
 };

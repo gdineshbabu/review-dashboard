@@ -2,6 +2,11 @@ import { prisma } from "./db";
 import { normalizeBatch } from "./normalize";
 import { resolveReviewSource } from "./sources";
 import type { FetchOptions, IngestResult, ReviewSource } from "@/models";
+import {
+  MAX_FETCH_ATTEMPTS,
+  BASE_BACKOFF_MS,
+  RATE_LIMIT_STATUS,
+} from "./constants";
 
 /** Sleep helper. */
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -17,7 +22,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const fetchWithRetry = async (
   source: ReviewSource,
   options: FetchOptions,
-  maxAttempts = 4,
+  maxAttempts = MAX_FETCH_ATTEMPTS,
 ): Promise<{ reviews: Awaited<ReturnType<ReviewSource["fetchReviews"]>>; attempts: number }> => {
   let lastError: unknown;
 
@@ -27,11 +32,12 @@ const fetchWithRetry = async (
       return { reviews, attempts: attempt };
     } catch (err) {
       lastError = err;
-      const isRateLimited = (err as { status?: number })?.status === 429;
+      const isRateLimited =
+        (err as { status?: number })?.status === RATE_LIMIT_STATUS;
       if (attempt === maxAttempts) break;
 
       // Exponential backoff (250ms, 500ms, 1000ms...), longer for rate limits.
-      const base = 250 * 2 ** (attempt - 1);
+      const base = BASE_BACKOFF_MS * 2 ** (attempt - 1);
       const backoff = isRateLimited ? base * 2 : base;
       console.warn(
         `[ingest] ${source.name} fetch attempt ${attempt}/${maxAttempts} failed ` +
