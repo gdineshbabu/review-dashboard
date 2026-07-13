@@ -8,31 +8,24 @@ import {
   Store,
   Activity,
 } from "lucide-react";
-import { fetchReviews, fetchStats } from "@/lib/api-client";
-import { PRODUCT_CATALOG } from "@/lib/sources";
-import { ReviewCard } from "@/components/review-card";
-import { ReviewFilters } from "@/components/review-filters";
-import { SearchBox } from "@/components/search-box";
-import { RefreshButton } from "@/components/refresh-button";
-import { AddProductForm } from "@/components/add-product-form";
-import { StatCard } from "@/components/stat-card";
-import { RatingDistribution } from "@/components/rating-distribution";
+import { fetchReviews, fetchStats } from "@/backend/api-client";
+import {
+  ReviewCard,
+  ReviewFilters,
+  SearchBox,
+  RefreshButton,
+  AddProductForm,
+  StatCard,
+  RatingDistribution,
+} from "@/frontend/components";
+import { PRODUCT_CATALOG } from "@/utils/constants";
+import { formatDate } from "@/utils";
+import { APP, STATS, REVIEWS } from "@/utils/labels";
 
 // This page always reflects the current DB state, so render it dynamically.
 export const dynamic = "force-dynamic";
 
-function formatUpdated(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-export default async function DashboardPage({
+const DashboardPage = async ({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -42,7 +35,7 @@ export default async function DashboardPage({
     country?: string;
     q?: string;
   }>;
-}) {
+}) => {
   const params = await searchParams;
   const [result, stats] = await Promise.all([
     fetchReviews(params),
@@ -68,10 +61,10 @@ export default async function DashboardPage({
             </div>
             <div>
               <h1 className="text-base font-semibold leading-tight">
-                The Review Dash
+                {APP.title}
               </h1>
               <p className="text-xs text-[var(--color-muted-foreground)]">
-                AliveCor product reviews
+                {APP.subtitle}
               </p>
             </div>
           </div>
@@ -88,26 +81,26 @@ export default async function DashboardPage({
           <section className="space-y-4">
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <StatCard
-                label="Total reviews"
+                label={STATS.total}
                 value={String(stats.total)}
                 icon={MessagesSquare}
               />
               <StatCard
-                label="Average rating"
+                label={STATS.average}
                 value={stats.averageRating.toFixed(1)}
-                hint="out of 5 stars"
+                hint={STATS.averageHint}
                 icon={Star}
               />
               <StatCard
-                label="Positive (4–5★)"
+                label={STATS.positive}
                 value={`${stats.positiveShare}%`}
-                hint="of all reviews"
+                hint={STATS.positiveHint}
                 icon={ThumbsUp}
               />
               <StatCard
-                label="Sources"
+                label={STATS.sources}
                 value={String(stats.sourceCount)}
-                hint={`updated ${formatUpdated(stats.latestReviewedAt)}`}
+                hint={STATS.updated(formatDate(stats.latestReviewedAt))}
                 icon={Store}
               />
             </div>
@@ -119,9 +112,9 @@ export default async function DashboardPage({
         <section className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Latest reviews</h2>
+              <h2 className="text-lg font-semibold">{REVIEWS.heading}</h2>
               <p className="text-sm text-[var(--color-muted-foreground)]">
-                Showing the 20 most recent, newest first.
+                {REVIEWS.subheading}
               </p>
             </div>
             <Suspense fallback={<div className="h-9" />}>
@@ -151,32 +144,32 @@ export default async function DashboardPage({
       </main>
     </div>
   );
-}
+};
 
-function ErrorState({ message }: { message: string }) {
+export default DashboardPage;
+
+const ErrorState = ({ message }: { message: string }) => {
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-[var(--color-background)] py-16 text-center">
       <AlertTriangle className="h-8 w-8 text-[var(--color-destructive)]" />
-      <p className="font-medium">Something went wrong</p>
+      <p className="font-medium">{REVIEWS.errorTitle}</p>
       <p className="max-w-md text-sm text-[var(--color-muted-foreground)]">
         {message}
       </p>
     </div>
   );
-}
+};
 
-function EmptyState({ isFiltered }: { isFiltered: boolean }) {
+const EmptyState = ({ isFiltered }: { isFiltered: boolean }) => {
   return (
     <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed bg-[var(--color-background)] py-16 text-center">
       <Inbox className="h-8 w-8 text-[var(--color-muted-foreground)]" />
       <p className="font-medium">
-        {isFiltered ? "No reviews match these filters" : "No reviews yet"}
+        {isFiltered ? REVIEWS.emptyFilteredTitle : REVIEWS.emptyTitle}
       </p>
       <p className="max-w-md text-sm text-[var(--color-muted-foreground)]">
-        {isFiltered
-          ? "Try clearing the rating or source filter."
-          : 'Click "Refresh reviews" to pull the latest reviews into the dashboard.'}
+        {isFiltered ? REVIEWS.emptyFilteredHint : REVIEWS.emptyHint}
       </p>
     </div>
   );
-}
+};

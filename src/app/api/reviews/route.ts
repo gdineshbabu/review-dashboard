@@ -4,7 +4,7 @@ import {
   listProducts,
   listReviews,
   listSources,
-} from "@/lib/reviews";
+} from "@/backend/reviews";
 
 // Reviews are read fresh from the DB on each request (no static caching).
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
  * Returns the latest reviews, newest first. This is the only path the dashboard
  * uses to read data — it never touches the upstream source directly.
  */
-export async function GET(request: Request) {
+export const GET = async (request: Request) => {
   const { searchParams } = new URL(request.url);
 
   const limitParam = searchParams.get("limit");
@@ -80,4 +80,4 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
-}
+};

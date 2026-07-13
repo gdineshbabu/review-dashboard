@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getReviewStats } from "@/lib/reviews";
+import { getReviewStats } from "@/backend/reviews";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * Aggregate metrics across all stored reviews — total, average rating, rating
  * distribution, positive share, source count. Drives the dashboard summary.
  */
-export async function GET() {
+export const GET = async () => {
   try {
     const stats = await getReviewStats();
     return NextResponse.json(stats);
@@ -20,4 +20,4 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+};
